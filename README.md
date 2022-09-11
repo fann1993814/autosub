@@ -7,7 +7,7 @@ Autosub is a utility for automatic speech recognition and subtitle generation. I
 ### Installation
 
 1. Install [ffmpeg](https://www.ffmpeg.org/). 
-2. Clone this project, Enter the project folder.
+2. Clone this project, enter the project folder.
 3. Run `pip install -e .`.
 
 ### Usage
