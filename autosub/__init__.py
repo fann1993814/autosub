@@ -32,8 +32,7 @@ from autosub.formatters import FORMATTERS
 
 DEFAULT_SUBTITLE_FORMAT = 'srt'
 DEFAULT_CONCURRENCY = 10
-DEFAULT_SRC_LANGUAGE = 'en'
-DEFAULT_DST_LANGUAGE = 'en'
+DEFAULT_LANGUAGE = 'en'
 DEFAULT_MIN_REGION_SIZE = 0.5
 DEFAULT_MAX_REGION_SIZE = 6
 
@@ -112,39 +111,6 @@ class SpeechRecognizer(object): # pylint: disable=too-few-public-methods
                         continue
                     except JSONDecodeError:
                         continue
-
-        except KeyboardInterrupt:
-            return None
-
-
-class Translator(object): # pylint: disable=too-few-public-methods
-    """
-    Class for translating a sentence from a one language to another.
-    """
-    def __init__(self, language, api_key, src, dst):
-        self.language = language
-        self.api_key = api_key
-        self.service = build('translate', 'v2',
-                             developerKey=self.api_key)
-        self.src = src
-        self.dst = dst
-
-    def __call__(self, sentence):
-        try:
-            if not sentence:
-                return None
-
-            result = self.service.translations().list( # pylint: disable=no-member
-                source=self.src,
-                target=self.dst,
-                q=[sentence]
-            ).execute()
-
-            if 'translations' in result and result['translations'] and \
-                'translatedText' in result['translations'][0]:
-                return result['translations'][0]['translatedText']
-
-            return None
 
         except KeyboardInterrupt:
             return None
@@ -235,8 +201,7 @@ def generate_subtitles( # pylint: disable=too-many-locals,too-many-arguments
         source_path,
         output=None,
         concurrency=DEFAULT_CONCURRENCY,
-        src_language=DEFAULT_SRC_LANGUAGE,
-        dst_language=DEFAULT_DST_LANGUAGE,
+        language=DEFAULT_LANGUAGE,
         min_region_size=DEFAULT_MIN_REGION_SIZE,
         max_region_size=DEFAULT_MAX_REGION_SIZE,
         subtitle_file_format=DEFAULT_SUBTITLE_FORMAT,
@@ -251,7 +216,7 @@ def generate_subtitles( # pylint: disable=too-many-locals,too-many-arguments
 
     pool = multiprocessing.Pool(concurrency)
     converter = FLACConverter(source_path=audio_filename)
-    recognizer = SpeechRecognizer(language=src_language, rate=audio_rate,
+    recognizer = SpeechRecognizer(language=language, rate=audio_rate,
                                   api_key=GOOGLE_SPEECH_API_KEY)
 
     transcripts = []
@@ -273,28 +238,6 @@ def generate_subtitles( # pylint: disable=too-many-locals,too-many-arguments
                 transcripts.append(transcript)
                 pbar.update(i)
             pbar.finish()
-
-            if src_language.split("-")[0] != dst_language.split("-")[0]:
-                if api_key:
-                    google_translate_api_key = api_key
-                    translator = Translator(dst_language, google_translate_api_key,
-                                            dst=dst_language,
-                                            src=src_language)
-                    prompt = "Translating from {0} to {1}: ".format(src_language, dst_language)
-                    widgets = [prompt, Percentage(), ' ', Bar(), ' ', ETA()]
-                    pbar = ProgressBar(widgets=widgets, maxval=len(regions)).start()
-                    translated_transcripts = []
-                    for i, transcript in enumerate(pool.imap(translator, transcripts)):
-                        translated_transcripts.append(transcript)
-                        pbar.update(i)
-                    pbar.finish()
-                    transcripts = translated_transcripts
-                else:
-                    print(
-                        "Error: Subtitle translation requires specified Google Translate API key. "
-                        "See --help for further information."
-                    )
-                    return 1
 
         except KeyboardInterrupt:
             pbar.finish()
@@ -332,16 +275,9 @@ def validate(args):
         )
         return False
 
-    if args.src_language not in LANGUAGE_CODES.keys():
+    if args.language not in LANGUAGE_CODES.keys():
         print(
             "Source language not supported. "
-            "Run with --list-languages to see all supported languages."
-        )
-        return False
-
-    if args.dst_language not in LANGUAGE_CODES.keys():
-        print(
-            "Destination language not supported. "
             "Run with --list-languages to see all supported languages."
         )
         return False
@@ -367,10 +303,8 @@ def main():
                         the same directory and name as the source path)")
     parser.add_argument('-F', '--format', help="Destination subtitle format",
                         default=DEFAULT_SUBTITLE_FORMAT)
-    parser.add_argument('-S', '--src-language', help="Language spoken in source file",
-                        default=DEFAULT_SRC_LANGUAGE)
-    parser.add_argument('-D', '--dst-language', help="Desired language for the subtitles",
-                        default=DEFAULT_DST_LANGUAGE)
+    parser.add_argument('-L', '--input-language', help="Language spoken in input file",
+                        default=DEFAULT_LANGUAGE)
     parser.add_argument('-m', '--min-region', help="Minimum region size",
                          default=DEFAULT_MIN_REGION_SIZE)
     parser.add_argument('-M', '--max-region', help="Maximum region size",
@@ -404,8 +338,7 @@ def main():
         subtitle_file_path = generate_subtitles(
             source_path=args.source_path,
             concurrency=args.concurrency,
-            src_language=args.src_language,
-            dst_language=args.dst_language,
+            language=args.language,
             min_region_size=args.min_region,
             max_region_size=args.max_region,
             api_key=args.api_key,

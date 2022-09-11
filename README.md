@@ -6,15 +6,16 @@ Autosub is a utility for automatic speech recognition and subtitle generation. I
 
 ### Installation
 
-1. Install [ffmpeg](https://www.ffmpeg.org/).
-2. Run `pip install autosub`.
+1. Install [ffmpeg](https://www.ffmpeg.org/). 
+2. Clone this project, Enter the project folder.
+3. Run `pip install -e .`.
 
 ### Usage
 
 ```
 $ autosub -h
-usage: autosub [-h] [-C CONCURRENCY] [-o OUTPUT] [-F FORMAT] [-S SRC_LANGUAGE]
-               [-D DST_LANGUAGE] [-K API_KEY] [--list-formats]
+usage: autosub [-h] [-C CONCURRENCY] [-o OUTPUT] [-F FORMAT] [-L INPUT_LANGUAGE]
+               [-K API_KEY] [--list-formats]
                [--list-languages]
                [source_path]
 
@@ -31,10 +32,8 @@ optional arguments:
                         path)
   -F FORMAT, --format FORMAT
                         Destination subtitle format
-  -S SRC_LANGUAGE, --src-language SRC_LANGUAGE
-                        Language spoken in source file
-  -D DST_LANGUAGE, --dst-language DST_LANGUAGE
-                        Desired language for the subtitles
+  -L INPUT_LANGUAGE, --input-language INPUT_LANGUAGE
+                        Language spoken in input file
   -K API_KEY, --api-key API_KEY
                         The Google Translate API key to be used. (Required for
                         subtitle translation)
