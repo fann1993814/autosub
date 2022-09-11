@@ -103,8 +103,9 @@ class SpeechRecognizer(object): # pylint: disable=too-few-public-methods
                 for line in resp.content.decode('utf-8').split("\n"):
                     try:
                         line = json.loads(line)
+                        confidence = "{:.2f}".format(line['result'][0]['alternative'][0]['confidence'])
                         line = line['result'][0]['alternative'][0]['transcript']
-                        return line[:1].upper() + line[1:]
+                        return (line[:1].upper() + line[1:], confidence)
                     except IndexError:
                         # no result
                         continue
@@ -205,6 +206,7 @@ def generate_subtitles( # pylint: disable=too-many-locals,too-many-arguments
         max_region_size=DEFAULT_MAX_REGION_SIZE,
         subtitle_file_format=DEFAULT_SUBTITLE_FORMAT,
         api_key=None,
+        return_score=False,
     ):
     """
     Given an input audio/video file, generate subtitles in the specified language and format.
@@ -219,6 +221,7 @@ def generate_subtitles( # pylint: disable=too-many-locals,too-many-arguments
                                   api_key=GOOGLE_SPEECH_API_KEY)
 
     transcripts = []
+    scores = []
     if regions:
         try:
             widgets = ["Converting speech regions to FLAC files: ", Percentage(), ' ', Bar(), ' ',
@@ -233,8 +236,13 @@ def generate_subtitles( # pylint: disable=too-many-locals,too-many-arguments
             widgets = ["Performing speech recognition: ", Percentage(), ' ', Bar(), ' ', ETA()]
             pbar = ProgressBar(widgets=widgets, maxval=len(regions)).start()
 
-            for i, transcript in enumerate(pool.imap(recognizer, extracted_regions)):
+            for i, res in enumerate(pool.imap(recognizer, extracted_regions)):
+                transcript = confidence = None
+                if res is not None:
+                    transcript, confidence = res
                 transcripts.append(transcript)
+                scores.append(confidence)
+
                 pbar.update(i)
             pbar.finish()
 
@@ -245,7 +253,11 @@ def generate_subtitles( # pylint: disable=too-many-locals,too-many-arguments
             print("Cancelling transcription")
             raise
 
-    timed_subtitles = [(r, t) for r, t in zip(regions, transcripts) if t]
+    if return_score:
+        timed_subtitles = [(r, t + '\t' + s) for r, t, s in zip(regions, transcripts, scores) if t]
+    else:
+        timed_subtitles = [(r, t) for r, t in zip(regions, transcripts) if t]
+
     formatter = FORMATTERS.get(subtitle_file_format)
     formatted_subtitles = formatter(timed_subtitles)
 
@@ -302,7 +314,7 @@ def main():
                         the same directory and name as the source path)")
     parser.add_argument('-F', '--format', help="Destination subtitle format",
                         default=DEFAULT_SUBTITLE_FORMAT)
-    parser.add_argument('-L', '--input-language', help="Language spoken in input file",
+    parser.add_argument('-L', '--language', help="Language spoken in input file",
                         default=DEFAULT_LANGUAGE)
     parser.add_argument('-m', '--min-region', help="Minimum region size",
                          default=DEFAULT_MIN_REGION_SIZE)
@@ -311,6 +323,9 @@ def main():
     parser.add_argument('-K', '--api-key',
                         help="The Google Translate API key to be used. \
                         (Required for subtitle translation)")
+    parser.add_argument('-s', '--confidence-score',
+                        help="Return Confidence Score from Recognition API.",
+                        action='store_true')
     parser.add_argument('--list-formats', help="List all available subtitle formats",
                         action='store_true')
     parser.add_argument('--list-languages', help="List all available source/destination languages",
@@ -341,6 +356,7 @@ def main():
             min_region_size=args.min_region,
             max_region_size=args.max_region,
             api_key=args.api_key,
+            return_score=args.confidence_score,
             subtitle_file_format=args.format,
             output=args.output,
         )
