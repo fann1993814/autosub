@@ -34,7 +34,8 @@ DEFAULT_SUBTITLE_FORMAT = 'srt'
 DEFAULT_CONCURRENCY = 10
 DEFAULT_SRC_LANGUAGE = 'en'
 DEFAULT_DST_LANGUAGE = 'en'
-
+DEFAULT_MIN_REGION_SIZE = 0.5
+DEFAULT_MAX_REGION_SIZE = 6
 
 def percentile(arr, percent):
     """
@@ -236,6 +237,8 @@ def generate_subtitles( # pylint: disable=too-many-locals,too-many-arguments
         concurrency=DEFAULT_CONCURRENCY,
         src_language=DEFAULT_SRC_LANGUAGE,
         dst_language=DEFAULT_DST_LANGUAGE,
+        min_region_size=DEFAULT_MIN_REGION_SIZE,
+        max_region_size=DEFAULT_MAX_REGION_SIZE,
         subtitle_file_format=DEFAULT_SUBTITLE_FORMAT,
         api_key=None,
     ):
@@ -244,7 +247,7 @@ def generate_subtitles( # pylint: disable=too-many-locals,too-many-arguments
     """
     audio_filename, audio_rate = extract_audio(source_path)
 
-    regions = find_speech_regions(audio_filename)
+    regions = find_speech_regions(audio_filename, min_region_size=min_region_size, max_region_size=max_region_size)
 
     pool = multiprocessing.Pool(concurrency)
     converter = FLACConverter(source_path=audio_filename)
@@ -368,6 +371,10 @@ def main():
                         default=DEFAULT_SRC_LANGUAGE)
     parser.add_argument('-D', '--dst-language', help="Desired language for the subtitles",
                         default=DEFAULT_DST_LANGUAGE)
+    parser.add_argument('-m', '--min-region', help="Minimum region size",
+                         default=DEFAULT_MIN_REGION_SIZE)
+    parser.add_argument('-M', '--max-region', help="Maximum region size",
+                         default=DEFAULT_MAX_REGION_SIZE)
     parser.add_argument('-K', '--api-key',
                         help="The Google Translate API key to be used. \
                         (Required for subtitle translation)")
@@ -399,6 +406,8 @@ def main():
             concurrency=args.concurrency,
             src_language=args.src_language,
             dst_language=args.dst_language,
+            min_region_size=args.min_region,
+            max_region_size=args.max_region,
             api_key=args.api_key,
             subtitle_file_format=args.format,
             output=args.output,
