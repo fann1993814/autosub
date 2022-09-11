@@ -317,9 +317,9 @@ def main():
     parser.add_argument('-L', '--language', help="Language spoken in input file",
                         default=DEFAULT_LANGUAGE)
     parser.add_argument('-m', '--min-region', help="Minimum region size",
-                         default=DEFAULT_MIN_REGION_SIZE)
+                        type=float, default=DEFAULT_MIN_REGION_SIZE)
     parser.add_argument('-M', '--max-region', help="Maximum region size",
-                         default=DEFAULT_MAX_REGION_SIZE)
+                        type=float, default=DEFAULT_MAX_REGION_SIZE)
     parser.add_argument('-K', '--api-key',
                         help="The Google Translate API key to be used. \
                         (Required for subtitle translation)")
